@@ -64,7 +64,7 @@ class DriveSubsystem(SubsystemBase):
             DriveConstants.kDriveKinematics,
             Rotation2d.fromDegrees(self.gyro.getAngle()),
             [
-                self.frontLeft.getPosition(),
+                self.frontLeft.getPosition(),  # ignore this error, it works like this
                 self.frontRight.getPosition(),
                 self.rearLeft.getPosition(),
                 self.rearRight.getPosition(),

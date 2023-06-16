@@ -1,21 +1,18 @@
 import math
 import typing
 
+import navx
 import wpilib
 
 from commands2 import SubsystemBase
+from wpilib import SPI
 from wpimath.filter import SlewRateLimiter
 from wpimath.geometry import Pose2d, Rotation2d
-from wpimath.kinematics import (
-    ChassisSpeeds,
-    SwerveModuleState,
-    SwerveDrive4Kinematics,
-    SwerveDrive4Odometry,
-)
+from wpimath.kinematics import ChassisSpeeds, SwerveModuleState, SwerveDrive4Kinematics, SwerveDrive4Odometry
 
 from constants import DriveConstants
 import swerveutils
-from .maxswervemodule import MAXSwerveModule
+from maxswervemodule import MAXSwerveModule
 
 
 class DriveSubsystem(SubsystemBase):
@@ -48,7 +45,7 @@ class DriveSubsystem(SubsystemBase):
         )
 
         # The gyro sensor
-        self.gyro = wpilib.ADIS16470_IMU()
+        self.gyro = navx.AHRS(SPI.Port.kMXP)
 
         # Slew rate filter variables for controlling lateral acceleration
         self.currentRotation = 0.0

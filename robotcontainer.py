@@ -1,6 +1,8 @@
 import math
 
 import commands2
+import commands2.button
+
 import wpimath
 import wpilib
 
@@ -8,7 +10,14 @@ from wpimath.controller import PIDController, ProfiledPIDControllerRadians
 from wpimath.geometry import Pose2d, Rotation2d, Translation2d
 from wpimath.trajectory import TrajectoryConfig, TrajectoryGenerator
 
+from commands.arm_pid_to_position import ArmPIDToPosition
+from commands.intake_in import IntakeIn
+from commands.intake_out import IntakeOut
+from commands.wrist_pid_to_position import WristPIDToPosition
 from constants import AutoConstants, DriveConstants, OIConstants
+from subsystems.arm_subsystem import ArmSubsystem
+from subsystems.intake_subsystem import IntakeSubsystem
+from subsystems.wrist_subsystem import WristSubsystem
 from subsystems.drivesubsystem import DriveSubsystem
 
 
@@ -23,9 +32,13 @@ class RobotContainer:
     def __init__(self) -> None:
         # The robot's subsystems
         self.robotDrive = DriveSubsystem()
+        self.armSubsystem = ArmSubsystem()
+        self.wristSubsystem = WristSubsystem()
+        self.intakeSubsystem = IntakeSubsystem()
 
-        # The driver's controller
+        # The driver controllers
         self.driverController = wpilib.Joystick(OIConstants.kDriverControllerPort)
+        self.operatorController = wpilib.Joystick(OIConstants.kOperatorControllerPort)
 
         # Configure the button bindings
         self.configureButtonBindings()
@@ -37,16 +50,20 @@ class RobotContainer:
             commands2.RunCommand(
                 lambda: self.robotDrive.drive(
                     -wpimath.applyDeadband(
-                        self.driverController.getX(), OIConstants.kDriveDeadband
+                        (self.driverController.getY() * math.sin(self.robotDrive.getHeading() * (math.pi / 180))) +
+                        (self.driverController.getX() * math.cos(self.robotDrive.getHeading() * (math.pi / 180))),
+                        OIConstants.kDriveDeadband
                     ),
                     -wpimath.applyDeadband(
-                        -self.driverController.getY(), OIConstants.kDriveDeadband
+                        (-self.driverController.getY() * math.cos(self.robotDrive.getHeading() * (math.pi / 180))) +
+                        (self.driverController.getX() * math.sin(self.robotDrive.getHeading() * (math.pi / 180))),
+                        OIConstants.kDriveDeadband
                     ),
                     -wpimath.applyDeadband(
                         self.driverController.getZ(), OIConstants.kDriveDeadband
                     ),
                     True,
-                    True,
+                    False,
                 ),
                 [self.robotDrive],
             )
@@ -58,6 +75,35 @@ class RobotContainer:
         instantiating a :GenericHID or one of its subclasses (Joystick or XboxController),
         and then passing it to a JoystickButton.
         """
+        commands2.button.JoystickButton(self.operatorController, 5).whileTrue(
+            IntakeIn(self.intakeSubsystem)
+        )
+        commands2.button.JoystickButton(self.operatorController, 6).whileTrue(
+            IntakeOut(self.intakeSubsystem)
+        )
+
+        # SINGLE SUBSTATION PICKUP
+        commands2.button.JoystickButton(self.operatorController, 3).whenPressed(
+            WristPIDToPosition(self.wristSubsystem, 0.45)
+        )
+        commands2.button.JoystickButton(self.operatorController, 3).whenPressed(
+            ArmPIDToPosition(self.armSubsystem, 0.84)
+        )
+
+        # IDLE STATE - ARM IS UP, WRIST IS DOWN FOR MOVEMENT
+        commands2.button.JoystickButton(self.operatorController, 4).whenPressed(
+            WristPIDToPosition(self.wristSubsystem, 0.79)
+        )
+        commands2.button.JoystickButton(self.operatorController, 4).whenPressed(
+            ArmPIDToPosition(self.armSubsystem, 0.67)
+        )
+        # FlOOR PICKUP - CUBES
+        commands2.button.JoystickButton(self.operatorController, 2).whenPressed(
+            WristPIDToPosition(self.wristSubsystem, 0.57)
+        )
+        commands2.button.JoystickButton(self.operatorController, 2).whenPressed(
+            ArmPIDToPosition(self.armSubsystem, 0.9)
+        )
 
     def disablePIDSubsystems(self) -> None:
         """Disables all ProfiledPIDSubsystem and PIDSubsystem instances.

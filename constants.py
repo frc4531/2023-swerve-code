@@ -33,9 +33,9 @@ class DriveConstants:
     kRotationalSlewRate = 2.0  # percent per second (1 = 100%)
 
     # Chassis configuration
-    kTrackWidth = units.inchesToMeters(24.25)
+    kTrackWidth = units.inchesToMeters(27.875)
     # ^ Distance between centers of right and left wheels on robot
-    kWheelBase = units.inchesToMeters(27.875)
+    kWheelBase = units.inchesToMeters(24.25)
     # ^ Distance between front and back wheels on robot
 
     kModulePositions = [
@@ -47,21 +47,27 @@ class DriveConstants:
     kDriveKinematics = SwerveDrive4Kinematics(*kModulePositions)
 
     # Angular offsets of the modules relative to the chassis in radians
-    kFrontLeftChassisAngularOffset = 0
-    kFrontRightChassisAngularOffset = math.pi / 2
-    kBackLeftChassisAngularOffset = -math.pi / 2
-    kBackRightChassisAngularOffset = math.pi
+    kFrontLeftChassisAngularOffset = -math.pi / 2
+    kFrontRightChassisAngularOffset = 0
+    kBackLeftChassisAngularOffset = math.pi
+    kBackRightChassisAngularOffset = math.pi / 2
 
+    """
+    front right became front left
+    front left became back left
+    back left became back right
+    back right became front right
+    """
     # SPARK MAX CAN IDs
-    kFrontLeftDrivingCanId = 12
-    kRearLeftDrivingCanId = 16
-    kFrontRightDrivingCanId = 14
-    kRearRightDrivingCanId = 18
+    kFrontLeftDrivingCanId = 16  # 12
+    kRearLeftDrivingCanId = 18  # 16
+    kFrontRightDrivingCanId = 12  # 14
+    kRearRightDrivingCanId = 14  # 18
 
-    kFrontLeftTurningCanId = 11
-    kRearLeftTurningCanId = 15
-    kFrontRightTurningCanId = 13
-    kRearRightTurningCanId = 17
+    kFrontLeftTurningCanId = 15  # 11
+    kRearLeftTurningCanId = 17  # 15
+    kFrontRightTurningCanId = 11  # 13
+    kRearRightTurningCanId = 13  # 17
 
     kGyroReversed = False
 
@@ -122,6 +128,8 @@ class ModuleConstants:
 
 class OIConstants:
     kDriverControllerPort = 0
+    kOperatorControllerPort = 1
+
     kDriveDeadband = 0.05
 
 

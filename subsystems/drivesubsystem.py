@@ -8,11 +8,16 @@ from commands2 import SubsystemBase
 from wpilib import SPI
 from wpimath.filter import SlewRateLimiter
 from wpimath.geometry import Pose2d, Rotation2d
-from wpimath.kinematics import ChassisSpeeds, SwerveModuleState, SwerveDrive4Kinematics, SwerveDrive4Odometry
+from wpimath.kinematics import (
+    ChassisSpeeds,
+    SwerveModuleState,
+    SwerveDrive4Kinematics,
+    SwerveDrive4Odometry,
+)
 
 from constants import DriveConstants
 import swerveutils
-from maxswervemodule import MAXSwerveModule
+from .maxswervemodule import MAXSwerveModule
 
 
 class DriveSubsystem(SubsystemBase):
@@ -69,6 +74,7 @@ class DriveSubsystem(SubsystemBase):
         )
 
     def periodic(self) -> None:
+        wpilib.SmartDashboard.putNumber("Heading Value", self.getHeading())
         # Update the odometry in the periodic block
         self.odometry.update(
             Rotation2d.fromDegrees(self.gyro.getAngle()),
@@ -113,7 +119,7 @@ class DriveSubsystem(SubsystemBase):
         :param xSpeed:        Speed of the robot in the x direction (forward).
         :param ySpeed:        Speed of the robot in the y direction (sideways).
         :param rot:           Angular rate of the robot.
-        :param fieldRelative: Whether the provided x and y speeds are relative to the
+        :param fieldRelative: Whether the robot should drive relative to the
                               field.
         :param rateLimit:     Whether to enable rate limiting for smoother control.
         """
@@ -124,7 +130,7 @@ class DriveSubsystem(SubsystemBase):
         if rateLimit:
             # Convert XY to polar for rate limiting
             inputTranslationDir = math.atan2(ySpeed, xSpeed)
-            inputTranslationMag = math.hypot(xSpeed, ySpeed)
+            inputTranslationMag = math.sqrt((math.pow(xSpeed, 2) + (math.pow(ySpeed, 2))))
 
             # Calculate the direction slew rate based on an estimate of the lateral acceleration
             if self.currentTranslationMag != 0.0:
@@ -194,9 +200,9 @@ class DriveSubsystem(SubsystemBase):
                 xSpeedDelivered,
                 ySpeedDelivered,
                 rotDelivered,
-                Rotation2d.fromDegrees(self.gyro.getAngle()),
+                Rotation2d.fromDegrees(self.gyro.getYaw()),
             )
-            if fieldRelative
+            if not fieldRelative
             else ChassisSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered)
         )
         swerveModuleStates = SwerveDrive4Kinematics.desaturateWheelSpeeds(
@@ -245,7 +251,7 @@ class DriveSubsystem(SubsystemBase):
 
         :returns: the robot's heading in degrees, from -180 to 180
         """
-        return Rotation2d.fromDegrees(self.gyro.getAngle()).getDegrees()
+        return self.gyro.getYaw()
 
     def getTurnRate(self) -> float:
         """Returns the turn rate of the robot.

@@ -11,6 +11,7 @@ from wpimath.geometry import Pose2d, Rotation2d, Translation2d
 from wpimath.trajectory import TrajectoryConfig, TrajectoryGenerator
 
 from commands.arm_pid_to_position import ArmPIDToPosition
+from commands.drive_along_trajectory import DriveAlongTrajectory
 from commands.intake_in import IntakeIn
 from commands.intake_out import IntakeOut
 from commands.wrist_pid_to_position import WristPIDToPosition
@@ -75,6 +76,40 @@ class RobotContainer:
         instantiating a :GenericHID or one of its subclasses (Joystick or XboxController),
         and then passing it to a JoystickButton.
         """
+
+        # Set wheels to X (brake)
+        commands2.button.JoystickButton(self.driverController, 7).toggleWhenPressed(
+            commands2.RunCommand(
+                lambda: self.robotDrive.setX(),
+                [self.robotDrive],
+            )
+        )
+
+        # Slow mode
+        commands2.button.JoystickButton(self.driverController, 6).toggleWhenPressed(
+            commands2.RunCommand(
+                lambda: self.robotDrive.drive(
+                    -wpimath.applyDeadband(
+                        ((self.driverController.getY() * math.sin(self.robotDrive.getHeading() * (math.pi / 180))) +
+                        (self.driverController.getX() * math.cos(self.robotDrive.getHeading() * (math.pi / 180)))) * 0.5,
+                        OIConstants.kDriveDeadband
+                    ),
+                    -wpimath.applyDeadband(
+                        ((-self.driverController.getY() * math.cos(self.robotDrive.getHeading() * (math.pi / 180))) +
+                        (self.driverController.getX() * math.sin(self.robotDrive.getHeading() * (math.pi / 180)))) * 0.5,
+                        OIConstants.kDriveDeadband
+                    ),
+                    -wpimath.applyDeadband(
+                        self.driverController.getZ() * 0.5, OIConstants.kDriveDeadband
+                    ),
+                    True,
+                    False,
+                ),
+                [self.robotDrive],
+            )
+        )
+
+        # Intake in and out
         commands2.button.JoystickButton(self.operatorController, 5).whileTrue(
             IntakeIn(self.intakeSubsystem)
         )
@@ -82,12 +117,28 @@ class RobotContainer:
             IntakeOut(self.intakeSubsystem)
         )
 
+        # CUBES MID
+        commands2.button.JoystickButton(self.operatorController, 1).whenPressed(
+            WristPIDToPosition(self.wristSubsystem, 0.65)
+        )
+        commands2.button.JoystickButton(self.operatorController, 1).whenPressed(
+            ArmPIDToPosition(self.armSubsystem, 0.80)
+        )
+
         # SINGLE SUBSTATION PICKUP
         commands2.button.JoystickButton(self.operatorController, 3).whenPressed(
             WristPIDToPosition(self.wristSubsystem, 0.45)
         )
         commands2.button.JoystickButton(self.operatorController, 3).whenPressed(
-            ArmPIDToPosition(self.armSubsystem, 0.84)
+            ArmPIDToPosition(self.armSubsystem, 0.88)
+        )
+
+        # Same as last one above, but on driver controller for endgame
+        commands2.button.JoystickButton(self.driverController, 8).whenPressed(
+            WristPIDToPosition(self.wristSubsystem, 0.45)
+        )
+        commands2.button.JoystickButton(self.driverController, 8).whenPressed(
+            ArmPIDToPosition(self.armSubsystem, 0.88)
         )
 
         # IDLE STATE - ARM IS UP, WRIST IS DOWN FOR MOVEMENT
@@ -99,10 +150,14 @@ class RobotContainer:
         )
         # FlOOR PICKUP - CUBES
         commands2.button.JoystickButton(self.operatorController, 2).whenPressed(
-            WristPIDToPosition(self.wristSubsystem, 0.57)
+            WristPIDToPosition(self.wristSubsystem, 0.675)
         )
         commands2.button.JoystickButton(self.operatorController, 2).whenPressed(
             ArmPIDToPosition(self.armSubsystem, 0.9)
+        )
+
+        commands2.button.JoystickButton(self.driverController, 2).whenPressed(
+            DriveAlongTrajectory(self.robotDrive)
         )
 
     def disablePIDSubsystems(self) -> None:
@@ -123,15 +178,26 @@ class RobotContainer:
         config.setKinematics(DriveConstants.kDriveKinematics)
 
         # An example trajectory to follow. All units in meters.
-        exampleTrajectory = TrajectoryGenerator.generateTrajectory(
-            # Start at the origin facing the +X direction
-            Pose2d(0, 0, Rotation2d(0)),
-            # Pass through these two interior waypoints, making an 's' curve path
-            [Translation2d(1, 1), Translation2d(2, -1)],
-            # End 3 meters straight ahead of where we started, facing forward
-            Pose2d(3, 0, Rotation2d(0)),
-            config,
-        )
+        if wpilib.Preferences.getBoolean("startingOnSides"):
+            exampleTrajectory = TrajectoryGenerator.generateTrajectory(
+                # Start at the origin facing the +X direction
+                Pose2d(0, 0, Rotation2d(0)),
+                # Pass through these two interior waypoints, making an 's' curve path
+                [Translation2d(0, -1), Translation2d(0, -2)],
+                # End 3 meters straight ahead of where we started, facing forward
+                Pose2d(0, -4.5, Rotation2d(0)),
+                config,
+            )
+        else:
+            exampleTrajectory = TrajectoryGenerator.generateTrajectory(
+                # Start at the origin facing the +X direction
+                Pose2d(0, 0, Rotation2d(0)),
+                # Pass through these two interior waypoints, making an 's' curve path
+                [Translation2d(0, -1), Translation2d(0, -2)],
+                # End 3 meters straight ahead of where we started, facing forward
+                Pose2d(0, -2.18, Rotation2d(0)),
+                config,
+            )
 
         thetaController = ProfiledPIDControllerRadians(
             AutoConstants.kPThetaController,
@@ -157,6 +223,31 @@ class RobotContainer:
         self.robotDrive.resetOdometry(exampleTrajectory.initialPose())
 
         # Run path following command, then stop at the end.
-        return swerveControllerCommand.andThen(
-            lambda: self.robotDrive.drive(0, 0, 0, False, False)
+        return commands2.SequentialCommandGroup(
+            commands2.ParallelDeadlineGroup(
+                commands2.WaitCommand(2),
+                WristPIDToPosition(self.wristSubsystem, 0.79),
+                ArmPIDToPosition(self.armSubsystem, 0.67)
+            ),
+            commands2.ParallelDeadlineGroup(
+                commands2.WaitCommand(1),
+                WristPIDToPosition(self.wristSubsystem, 0.79),
+                ArmPIDToPosition(self.armSubsystem, 0.67),
+                IntakeOut(self.intakeSubsystem)
+            ),
+            commands2.ParallelDeadlineGroup(
+                swerveControllerCommand.andThen(
+                    lambda: self.robotDrive.drive(0, 0, 0, False, False)
+                ),
+                WristPIDToPosition(self.wristSubsystem, 0.79),
+                ArmPIDToPosition(self.armSubsystem, 0.67)
+            ),
+            commands2.ParallelDeadlineGroup(
+                commands2.WaitCommand(2),
+                WristPIDToPosition(self.wristSubsystem, 0.45),
+                ArmPIDToPosition(self.armSubsystem, 0.84)
+            )
         )
+        # return swerveControllerCommand.andThen(
+        #     lambda: self.robotDrive.drive(0, 0, 0, False, False)
+        # )

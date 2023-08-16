@@ -14,6 +14,7 @@ from commands.arm_pid_to_position import ArmPIDToPosition
 from commands.drive_along_trajectory import DriveAlongTrajectory
 from commands.intake_in import IntakeIn
 from commands.intake_out import IntakeOut
+from commands.stop_arm_and_wrist import StopArmAndWrist
 from commands.wrist_pid_to_position import WristPIDToPosition
 from constants import AutoConstants, DriveConstants, OIConstants
 from subsystems.arm_subsystem import ArmSubsystem
@@ -156,8 +157,9 @@ class RobotContainer:
             ArmPIDToPosition(self.armSubsystem, 0.9)
         )
 
-        commands2.button.JoystickButton(self.driverController, 2).whenPressed(
-            DriveAlongTrajectory(self.robotDrive)
+        # STOP ARM AND WRIST
+        commands2.button.JoystickButton(self.operatorController, 13).toggleWhenPressed(
+            StopArmAndWrist(self.armSubsystem, self.wristSubsystem)
         )
 
     def disablePIDSubsystems(self) -> None:
@@ -188,6 +190,17 @@ class RobotContainer:
                 Pose2d(0, -4.5, Rotation2d(0)),
                 config,
             )
+        elif wpilib.Preferences.getBoolean("onRedAlliance"):
+            exampleTrajectory = TrajectoryGenerator.generateTrajectory(
+                # Start at the origin facing the +X direction
+                Pose2d(0, 0, Rotation2d(0)),
+                # Pass through these two interior waypoints, making an 's' curve path
+                [Translation2d(0, -1), Translation2d(0, -2)],
+                # End 3 meters straight ahead of where we started, facing forward
+                Pose2d(0, -2.45, Rotation2d(0)),
+                config,
+            )
+
         else:
             exampleTrajectory = TrajectoryGenerator.generateTrajectory(
                 # Start at the origin facing the +X direction
@@ -195,7 +208,7 @@ class RobotContainer:
                 # Pass through these two interior waypoints, making an 's' curve path
                 [Translation2d(0, -1), Translation2d(0, -2)],
                 # End 3 meters straight ahead of where we started, facing forward
-                Pose2d(0, -2.18, Rotation2d(0)),
+                Pose2d(0, -2.35, Rotation2d(0)),
                 config,
             )
 

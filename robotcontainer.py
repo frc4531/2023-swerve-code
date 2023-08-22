@@ -206,9 +206,9 @@ class RobotContainer:
                 # Start at the origin facing the +X direction
                 Pose2d(0, 0, Rotation2d(0)),
                 # Pass through these two interior waypoints, making an 's' curve path
-                [Translation2d(0, -1), Translation2d(0, -2)],
+                [Translation2d(1, -1), Translation2d(2, 1)],
                 # End 3 meters straight ahead of where we started, facing forward
-                Pose2d(0, -2.35, Rotation2d(0)),
+                Pose2d(3, 0, Rotation2d(0)),  # -2.35
                 config,
             )
 
